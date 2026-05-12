@@ -7,6 +7,8 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Gemma 4](https://img.shields.io/badge/Powered%20by-Gemma%204-orange)](https://ai.google.dev/gemma)
 
+**[neuroguard-psi.vercel.app](https://neuroguard-psi.vercel.app)** · **[github.com/tyy130/neuroguard](https://github.com/tyy130/neuroguard)**
+
 NeuroGuard reviews Python code for security vulnerabilities in real-time — streaming Gemma 4's full cognitive trace on the left while it produces a verified, secure rewrite on the right.
 
 > Built for the [Dev.to Google Gemma 4 Challenge](https://dev.to/challenges/google-gemma-2026-05-06) · **Python only in v0.1** · JS/TS coming in v0.2
