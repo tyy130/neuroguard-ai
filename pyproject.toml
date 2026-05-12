@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "neuroguard"
+version = "0.1.0"
+description = "AI-native code security review powered by Gemma 4 Thinking Mode"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.12"
+keywords = ["security", "ai", "gemma", "sast", "code-review", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "google-genai>=1.67.0",
+    "rich>=14.0.0",
+    "typer>=0.9.0",
+    "bandit>=1.8.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+neuroguard = "neuroguard.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/tyler-hill/neuroguard"
+"Bug Tracker" = "https://github.com/tyler-hill/neuroguard/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["neuroguard"]

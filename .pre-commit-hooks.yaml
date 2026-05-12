@@ -1,0 +1,9 @@
+- id: neuroguard
+  name: NeuroGuard — AI Security Review
+  description: Reviews staged Python files for security vulnerabilities using Gemma 4 Thinking Mode.
+  entry: neuroguard review
+  language: python
+  types: [python]
+  pass_filenames: true
+  require_serial: true
+  additional_dependencies: []

@@ -1,0 +1,34 @@
+name: NeuroGuard Security Review
+
+on:
+  pull_request:
+    paths:
+      - "**.py"
+
+jobs:
+  security-review:
+    name: Gemma 4 Security Review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install NeuroGuard
+        run: pip install neuroguard
+
+      - name: Run security review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          neuroguard review . --format json --no-sast > neuroguard-report.json
+          cat neuroguard-report.json
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neuroguard-report
+          path: neuroguard-report.json
