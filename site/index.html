@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NeuroGuard — AI-Native Code Security</title>
+    <meta
+      name="description"
+      content="Review Python code for security vulnerabilities using Gemma 4's glass-box Thinking Mode. Watch the AI reason through every flaw, then verify the fix with Bandit SAST."
+    />
+    <meta property="og:title" content="NeuroGuard — AI-Native Code Security" />
+    <meta
+      property="og:description"
+      content="Gemma 4 finds your vulnerabilities. You watch it think."
+    />
+    <meta property="og:image" content="/og.png" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: "#f0fdf4",
+                500: "#22c55e",
+                600: "#16a34a",
+                900: "#14532d",
+              },
+            },
+            fontFamily: { mono: ["JetBrains Mono", "Fira Code", "monospace"] },
+          },
+        },
+      };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .glow {
+        box-shadow: 0 0 40px rgba(34, 197, 94, 0.15);
+      }
+      .terminal-glow {
+        box-shadow:
+          0 0 60px rgba(34, 197, 94, 0.12),
+          0 20px 60px rgba(0, 0, 0, 0.5);
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+      .cursor {
+        animation: blink 1s step-end infinite;
+      }
+      .copy-btn:active {
+        transform: scale(0.96);
+      }
+    </style>
+  </head>
+  <body class="bg-zinc-950 text-white antialiased">
+    <!-- NAV -->
+    <nav
+      class="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800/60 bg-zinc-950/80 backdrop-blur-md"
+    >
+      <div
+        class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between"
+      >
+        <div class="flex items-center gap-2">
+          <span class="text-brand-500 font-mono text-lg font-semibold"
+            >⬡ NeuroGuard</span
+          >
+          <span
+            class="text-xs font-mono bg-brand-500/10 text-brand-500 border border-brand-500/20 px-2 py-0.5 rounded-full"
+            >v0.1.0</span
+          >
+        </div>
+        <div class="flex items-center gap-4">
+          <a
+            href="https://github.com/tyy130/neuroguard"
+            target="_blank"
+            class="text-zinc-400 hover:text-white text-sm transition-colors"
+            >GitHub</a
+          >
+          <a
+            href="https://pypi.org/project/neuroguard/"
+            target="_blank"
+            class="text-zinc-400 hover:text-white text-sm transition-colors"
+            >PyPI</a
+          >
+          <a
+            href="https://dev.to/challenges/google-gemma-2026-05-06"
+            target="_blank"
+            class="text-xs font-mono bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-full hover:bg-orange-500/20 transition-colors"
+          >
+            Gemma 4 Challenge Entry
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="pt-36 pb-24 px-6">
+      <div class="max-w-4xl mx-auto text-center">
+        <div
+          class="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-700 rounded-full px-4 py-1.5 text-sm text-zinc-400 mb-8"
+        >
+          <span class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
+          Powered by Gemma 4 Thinking Mode
+        </div>
+
+        <h1
+          class="text-5xl sm:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6"
+        >
+          Your AI writes bugs.<br />
+          <span class="text-brand-500">NeuroGuard explains why.</span>
+        </h1>
+
+        <p
+          class="text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+        >
+          Review Python code for security vulnerabilities using Gemma 4's
+          glass-box Thinking Mode — watch the model reason through every flaw in
+          real-time, then verify the fix with Bandit SAST.
+        </p>
+
+        <!-- INSTALL BLOCK -->
+        <div
+          class="inline-flex items-center gap-3 bg-zinc-900 border border-zinc-700 rounded-xl px-5 py-3.5 glow mb-4"
+        >
+          <span class="text-zinc-500 font-mono text-sm select-none">$</span>
+          <code class="font-mono text-brand-500 text-sm" id="install-cmd"
+            >pip install neuroguard</code
+          >
+          <button
+            onclick="copyInstall()"
+            class="copy-btn ml-2 text-zinc-500 hover:text-white transition-colors"
+            title="Copy"
+          >
+            <svg
+              id="copy-icon"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path
+                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+              />
+            </svg>
+            <svg
+              id="check-icon"
+              class="hidden"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="#22c55e"
+              stroke-width="2.5"
+              viewBox="0 0 24 24"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </button>
+        </div>
+        <p class="text-xs text-zinc-600">
+          Python 3.12+ · Free
+          <a
+            href="https://aistudio.google.com"
+            class="text-zinc-500 hover:text-zinc-300"
+            >Google AI Studio</a
+          >
+          API key
+        </p>
+      </div>
+    </section>
+
+    <!-- DEMO TERMINAL -->
+    <section class="px-6 pb-24">
+      <div class="max-w-5xl mx-auto">
+        <div
+          class="rounded-xl overflow-hidden border border-zinc-800 terminal-glow"
+        >
+          <!-- Terminal chrome -->
+          <div
+            class="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex items-center gap-2"
+          >
+            <span class="w-3 h-3 rounded-full bg-red-500/70"></span>
+            <span class="w-3 h-3 rounded-full bg-yellow-500/70"></span>
+            <span class="w-3 h-3 rounded-full bg-green-500/70"></span>
+            <span class="ml-4 text-xs font-mono text-zinc-500"
+              >neuroguard review app.py</span
+            >
+          </div>
+          <!-- Live recording GIF -->
+          <div class="bg-zinc-950 flex items-center justify-center">
+            <img
+              src="/demo.gif"
+              alt="NeuroGuard live demo — Gemma 4 reasoning trace on the left, secure rewrite on the right"
+              class="w-full"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="px-6 pb-24">
+      <div class="max-w-5xl mx-auto">
+        <h2 class="text-3xl font-bold text-center mb-12">How it works</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4 text-xl"
+            >
+              🧠
+            </div>
+            <h3 class="font-semibold text-lg mb-2">Glass-Box Reasoning</h3>
+            <p class="text-zinc-400 text-sm leading-relaxed">
+              Gemma 4's
+              <code class="text-cyan-400 text-xs bg-zinc-800 px-1 rounded"
+                >&lt;|think|&gt;</code
+              >
+              token streams the full cognitive trace before any output is
+              accepted. You see exactly how the model found every vulnerability.
+            </p>
+          </div>
+
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-4 text-xl"
+            >
+              🔒
+            </div>
+            <h3 class="font-semibold text-lg mb-2">SAST Verified</h3>
+            <p class="text-zinc-400 text-sm leading-relaxed">
+              Every rewrite is independently confirmed clean by
+              <a
+                href="https://bandit.readthedocs.io"
+                class="text-green-400 hover:underline"
+                >Bandit</a
+              >. AI reasoning + static analysis. Two layers of confidence before
+              you trust the output.
+            </p>
+          </div>
+
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <div
+              class="w-10 h-10 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-4 text-xl"
+            >
+              ⚡
+            </div>
+            <h3 class="font-semibold text-lg mb-2">CI/CD Ready</h3>
+            <p class="text-zinc-400 text-sm leading-relaxed">
+              JSON output, exit codes, GitHub Actions template, and pre-commit
+              hook. Drop it into your pipeline — it fails the build if
+              vulnerabilities are detected.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- USAGE -->
+    <section class="px-6 pb-24">
+      <div class="max-w-4xl mx-auto">
+        <h2 class="text-3xl font-bold text-center mb-12">Usage</h2>
+        <div
+          class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden"
+        >
+          <div
+            class="border-b border-zinc-800 px-4 py-2 text-xs font-mono text-zinc-500"
+          >
+            terminal
+          </div>
+          <div class="p-6 font-mono text-sm space-y-3">
+            <div><span class="text-zinc-600"># review a file</span></div>
+            <div>
+              <span class="text-zinc-500">$</span>
+              <span class="text-white">neuroguard review app.py</span>
+            </div>
+            <div class="pt-2">
+              <span class="text-zinc-600"># scan a directory</span>
+            </div>
+            <div>
+              <span class="text-zinc-500">$</span>
+              <span class="text-white">neuroguard review src/</span>
+            </div>
+            <div class="pt-2">
+              <span class="text-zinc-600"># save the secure rewrite</span>
+            </div>
+            <div>
+              <span class="text-zinc-500">$</span>
+              <span class="text-white"
+                >neuroguard review app.py --save app_secure.py</span
+              >
+            </div>
+            <div class="pt-2">
+              <span class="text-zinc-600"># JSON output for CI/CD</span>
+            </div>
+            <div>
+              <span class="text-zinc-500">$</span>
+              <span class="text-white"
+                >neuroguard review app.py --format json | jq
+                '.original_findings'</span
+              >
+            </div>
+            <div class="pt-2">
+              <span class="text-zinc-600"># add pre-commit hook</span>
+            </div>
+            <div>
+              <span class="text-zinc-500">$</span>
+              <span class="text-white"
+                >neuroguard install-hooks && pre-commit install</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- OWASP TABLE -->
+    <section class="px-6 pb-24">
+      <div class="max-w-4xl mx-auto">
+        <h2 class="text-3xl font-bold text-center mb-4">
+          What NeuroGuard Catches
+        </h2>
+        <p class="text-center text-zinc-500 text-sm mb-10">
+          Gemma 4 reasons through OWASP Top 10 vulnerabilities in your code
+        </p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[ ["SQL Injection", "A03"], ["Hardcoded Secrets", "A02"], ["Missing
+          Auth", "A01"], ["Code Injection / eval()", "A03"], ["Debug Mode
+          Exposure", "A05"], ["Insecure Deserialization", "A08"], ["Weak
+          Cryptography", "A02"], ["Path Traversal", "A01"], ].map(([name, code])
+          => `
+          <div
+            class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-start gap-3"
+          >
+            <span class="text-brand-500 text-lg mt-0.5 flex-shrink-0">✓</span>
+            <div>
+              <p class="text-sm font-medium text-white">${name}</p>
+              <p class="text-xs text-zinc-600 font-mono mt-0.5">
+                OWASP ${code}
+              </p>
+            </div>
+          </div>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="px-6 pb-32">
+      <div class="max-w-2xl mx-auto text-center">
+        <div
+          class="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl p-12 glow"
+        >
+          <h2 class="text-3xl font-bold mb-4">Stop shipping vulnerabilities</h2>
+          <p class="text-zinc-400 mb-8">
+            Get a free Google AI Studio key and start reviewing in under 2
+            minutes.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <a
+              href="https://pypi.org/project/neuroguard/"
+              target="_blank"
+              class="bg-brand-500 hover:bg-brand-600 text-black font-semibold px-6 py-3 rounded-lg transition-colors"
+            >
+              pip install neuroguard
+            </a>
+            <a
+              href="https://github.com/tyy130/neuroguard"
+              target="_blank"
+              class="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors border border-zinc-700"
+            >
+              View on GitHub
+            </a>
+          </div>
+          <p class="text-xs text-zinc-600 mt-6">
+            Built for the
+            <a
+              href="https://dev.to/challenges/google-gemma-2026-05-06"
+              class="text-zinc-500 hover:text-zinc-300"
+              >Dev.to Google Gemma 4 Challenge</a
+            >
+            · Apache 2.0 License · Python 3.12+
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-zinc-900 px-6 py-8">
+      <div
+        class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-zinc-600"
+      >
+        <span class="font-mono">⬡ NeuroGuard v0.1.0</span>
+        <div class="flex items-center gap-6">
+          <a
+            href="https://github.com/tyy130/neuroguard"
+            class="hover:text-zinc-300 transition-colors"
+            >GitHub</a
+          >
+          <a
+            href="https://pypi.org/project/neuroguard/"
+            class="hover:text-zinc-300 transition-colors"
+            >PyPI</a
+          >
+          <a
+            href="https://aistudio.google.com"
+            class="hover:text-zinc-300 transition-colors"
+            >Get API Key</a
+          >
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      function copyInstall() {
+        navigator.clipboard.writeText("pip install neuroguard").then(() => {
+          document.getElementById("copy-icon").classList.add("hidden");
+          document.getElementById("check-icon").classList.remove("hidden");
+          setTimeout(() => {
+            document.getElementById("copy-icon").classList.remove("hidden");
+            document.getElementById("check-icon").classList.add("hidden");
+          }, 2000);
+        });
+      }
+    </script>
+  </body>
+</html>
