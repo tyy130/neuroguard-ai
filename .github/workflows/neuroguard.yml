@@ -21,7 +21,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install NeuroGuard
-        run: pip install neuroguard
+        run: pip install neuroguard-ai
 
       - name: Run security review
         env:

@@ -32,8 +32,8 @@ dependencies = [
 neuroguard = "neuroguard.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/tyy130/neuroguard"
-"Bug Tracker" = "https://github.com/tyy130/neuroguard/issues"
+Homepage = "https://github.com/tyy130/neuroguard-ai"
+"Bug Tracker" = "https://github.com/tyy130/neuroguard-ai/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["neuroguard"]

@@ -7,7 +7,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Gemma 4](https://img.shields.io/badge/Powered%20by-Gemma%204-orange)](https://ai.google.dev/gemma)
 
-**[neuroguard-psi.vercel.app](https://neuroguard-psi.vercel.app)** · **[github.com/tyy130/neuroguard](https://github.com/tyy130/neuroguard)**
+**[neuroguard-psi.vercel.app](https://neuroguard-psi.vercel.app)** · **[github.com/tyy130/neuroguard-ai](https://github.com/tyy130/neuroguard-ai)**
 
 NeuroGuard reviews Python and JavaScript/TypeScript code for security vulnerabilities in real-time — streaming Gemma 4's full cognitive trace on the left while it produces a verified, secure rewrite on the right.
 
