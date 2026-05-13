@@ -2,7 +2,7 @@
 
 **AI-native code security review powered by Gemma 4 Thinking Mode.**
 
-[![PyPI version](https://img.shields.io/badge/pypi-v0.1.0-blue)](https://pypi.org/project/neuroguard-ai/)
+[![PyPI version](https://img.shields.io/pypi/v/neuroguard-ai)](https://pypi.org/project/neuroguard-ai/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Gemma 4](https://img.shields.io/badge/Powered%20by-Gemma%204-orange)](https://ai.google.dev/gemma)
@@ -23,12 +23,14 @@ The root cause is opacity. When a black-box model generates insecure code, you c
 
 ## The Solution
 
-Gemma 4's `<|think|>` token turns the model into a **glass box**. Every reasoning step is visible, auditable, and inspectable before the final output is accepted. NeuroGuard wires this directly into a security workflow:
+Gemma 4's `ThinkingConfig(include_thoughts=True)` API turns the model into a **glass box**. Every reasoning step is emitted as a separate `thought=True` stream part — structurally separated from the final response at the API level. NeuroGuard wires this directly into a security workflow:
 
 1. Feed it a Python file or directory
 2. Gemma 4 streams its full cognitive trace — you watch it find each vulnerability in real-time
 3. It produces a complete, secure rewrite grounded in that explicit reasoning
 4. [Bandit](https://bandit.readthedocs.io) independently verifies the rewrite is clean
+
+> **Why Gemma 4 specifically:** GPT-4o and standard Claude hide their chain-of-thought entirely. DeepSeek-R1 exposes reasoning as raw text inside `<think>` tags in the final response — making it impossible to cleanly separate reasoning from answer at the API level. Gemma 4's `include_thoughts=True` gives a structurally clean separation that makes NeuroGuard's two-pane architecture possible.
 
 ---
 
@@ -81,6 +83,8 @@ neuroguard review app.py
 **Try it in 60 seconds** — run NeuroGuard against the built-in vulnerable demo:
 
 ```bash
+pip install neuroguard-ai
+export GEMINI_API_KEY=your_key   # https://aistudio.google.com/apikey
 git clone https://github.com/tyy130/neuroguard-ai
 cd neuroguard-ai
 neuroguard review demo/vuln_sample.py
@@ -174,10 +178,10 @@ repos:
     hooks:
       - id: neuroguard
         name: NeuroGuard Security Review
-        entry: neuroguard review
-        language: python
-        types: [python]
-        pass_filenames: true
+        entry: neuroguard review .
+        language: system
+        files: \.(py|js|jsx|ts|tsx)$
+        pass_filenames: false
         require_serial: true
 ```
 
@@ -197,7 +201,7 @@ Schema:
   "model": "gemma-4-31b-it",
   "original_findings": 4,
   "rewrite_findings": [],
-  "rewrite_valid_python": true,
+  "rewrite_valid": true,
   "thinking": "...",
   "response": "...",
   "secure_code": "..."
@@ -213,7 +217,7 @@ neuroguard/
 ├── cli.py             # Typer CLI — review, install-hooks, --version
 ├── agent.py           # Gemma 4 streaming client (google-genai SDK)
 ├── thinking_parser.py # Real-time <think>…</think> stream splitter
-├── prompts.py         # Language-aware system prompt (activates Thinking Mode via <|think|>)
+├── prompts.py         # Language-aware system prompt + SAST findings injection
 ├── integrations.py    # Slack Block Kit, generic webhook, GitHub PR comments
 ├── tools/
 │   ├── sast.py        # Bandit subprocess wrapper → Python findings
@@ -223,11 +227,11 @@ neuroguard/
 
 ### How Thinking Mode Works
 
-NeuroGuard calls the Google AI Studio API with `ThinkingConfig(include_thoughts=True)`, which causes Gemma 4 to emit reasoning tokens as separate `thought=True` stream parts — cleanly separated from the final response at the API level, not by parsing inline text tags.
+NeuroGuard calls the Google AI Studio API with `ThinkingConfig(include_thoughts=True)`, which causes Gemma 4 to emit reasoning tokens as separate `thought=True` stream parts — cleanly separated from the final response at the API level.
 
 `ThinkingStreamParser` routes thought parts to the left "🧠 Gemma 4 Thinking" pane and response parts to the right "🔒 Secure Rewrite" pane in real-time. SAST findings from Bandit/semgrep are injected into the prompt so the model's reasoning is grounded in concrete, tool-verified signals — making the thinking trace an auditable chain of evidence, not free-form output.
 
-> **Why this matters:** Models like GPT-4o and standard Claude hide their chain-of-thought. DeepSeek-R1 exposes reasoning as raw text in the final response — making it impossible to cleanly separate reasoning from answer. Gemma 4's `include_thoughts=True` API gives a structurally clean separation that enables NeuroGuard's two-pane architecture and the audit trail it produces.
+The thinking budget scales dynamically: `4096 + HIGH_count × 512 + MEDIUM_count × 256` tokens (capped at 16384), so files with more severe findings get proportionally deeper reasoning.
 
 ### Models
 
@@ -236,7 +240,7 @@ NeuroGuard calls the Google AI Studio API with `ThinkingConfig(include_thoughts=
 | `gemma-4-31b-it`     | Dense | 31B                    | Default — highest quality     |
 | `gemma-4-26b-a4b-it` | MoE   | ~4B active / 26B total | Fallback — faster, lower cost |
 
-> **Demo-proof:** if the 31B model hits a rate limit during a live demo, NeuroGuard automatically falls back to the MoE variant (`gemma-4-26b-a4b-it`) with no interruption. Thinking budget also scales with finding severity — more HIGH findings = deeper reasoning.
+> **Demo-proof:** if the 31B model hits a rate limit during a live demo, NeuroGuard automatically falls back to the MoE variant with no interruption.
 
 ---
 
@@ -277,10 +281,12 @@ export NEUROGUARD_WEBHOOK_URL=https://your-endpoint.com/hook
 
 Slack notifications include the vulnerability count, model used, rewrite status, and Gemma 4's top reasoning excerpts — making every security finding a traceable, shareable artifact.
 
-This is the shift from _vibe coding_ to _AI-native development_ — treating AI output as an untrusted first draft, verified by both visible reasoning and automated SAST.
-
 ---
 
 ## License
 
 Apache 2.0 — same as Gemma 4 itself.
+
+---
+
+> If you found NeuroGuard useful, consider leaving a reaction on the [Dev.to submission](https://dev.to/challenges/google-gemma-2026-05-06) — it helps with the challenge judging.

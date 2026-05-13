@@ -77,7 +77,10 @@ rules:
   - id: prototype-pollution
     patterns:
       - pattern: $OBJ[$KEY] = $VAL
-    message: "Potential prototype pollution via dynamic bracket-notation key assignment"
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (__proto__|constructor|prototype)
+    message: "Potential prototype pollution via __proto__/constructor/prototype key"
     severity: WARNING
     languages: [javascript, typescript]
 
@@ -102,18 +105,18 @@ rules:
 _PATTERNS = [
     (r"\beval\s*\(", "HIGH", "eval() executes arbitrary code (RCE risk)"),
     # Tighter secret pattern: assignment to a non-trivial string literal (excludes error messages, labels)
-    (r"(?i)\b(secret_key|api_key|api_secret|auth_token|access_token|private_key|passwd|db_password)\s*[=:]\s*['\"][A-Za-z0-9+/=_\-]{8,}['\"]", "HIGH", "Hardcoded secret"),
+    (r"(?i)\b(secret_key|api_key|api_secret|auth_token|access_token|private_key|passwd|db_password)\s*[=:]\s*['\"][A-Za-z0-9+/=_\-!@#$%^&*]{8,}['\"]", "HIGH", "Hardcoded secret"),
     (r"(SELECT|INSERT|UPDATE|DELETE).*\$\{", "HIGH", "SQL injection via template literal"),
     (r"(SELECT|INSERT|UPDATE|DELETE).*['\"\s]\s*\+\s*", "HIGH", "SQL injection via string concatenation"),
     (r"dangerouslySetInnerHTML\s*=\s*\{", "HIGH", "dangerouslySetInnerHTML XSS risk"),
     (r"\bdocument\.write\s*\(", "MEDIUM", "document.write() XSS risk"),
-    (r"\bexec\s*\(", "HIGH", "child_process.exec — shell injection risk if input is user-controlled"),
+    (r"(?<![.\w])exec\s*\(", "HIGH", "child_process.exec — shell injection risk if input is user-controlled"),
     (r"\bexecSync\s*\(", "HIGH", "child_process.execSync — shell injection risk if input is user-controlled"),
     (r"Math\.random\s*\(\s*\)", "MEDIUM", "Math.random() not cryptographically secure — use crypto.randomBytes()"),
     (r"(?i)\bdebug\s*[:=]\s*true", "MEDIUM", "Debug mode enabled in production"),
     (r"__proto__|\[\s*['\"]__proto__['\"]", "HIGH", "Potential prototype pollution via __proto__ key"),
-    (r"\.innerHTML\s*=", "HIGH", "innerHTML assignment — XSS if content is user-controlled"),
-    (r"\.outerHTML\s*=", "HIGH", "outerHTML assignment — XSS if content is user-controlled"),
+    (r"\.innerHTML\s*=\s*(?!['\"`])", "MEDIUM", "innerHTML assignment — XSS if content is user-controlled"),
+    (r"\.outerHTML\s*=\s*(?!['\"`])", "MEDIUM", "outerHTML assignment — XSS if content is user-controlled"),
     (r"new\s+Function\s*\(", "HIGH", "new Function() executes arbitrary code"),
     (r"setTimeout\s*\(\s*['\"]", "MEDIUM", "setTimeout with string argument executes arbitrary code"),
     (r"setInterval\s*\(\s*['\"]", "MEDIUM", "setInterval with string argument executes arbitrary code"),

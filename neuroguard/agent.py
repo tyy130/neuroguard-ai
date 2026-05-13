@@ -36,7 +36,7 @@ def _thinking_budget(sast_findings: list) -> int:
     """Scale thinking depth to finding severity — more findings = deeper reasoning."""
     high = sum(1 for f in sast_findings if getattr(f, "severity", "") == "HIGH")
     med  = sum(1 for f in sast_findings if getattr(f, "severity", "") == "MEDIUM")
-    return min(2048 + high * 512 + med * 256, 16384)
+    return min(4096 + high * 512 + med * 256, 16384)
 
 
 def _stream_model(
@@ -75,11 +75,6 @@ def _stream_model(
                         yield "</think>"
                         in_thought = False
                     yield part.text
-        elif chunk.text:
-            if in_thought:
-                yield "</think>"
-                in_thought = False
-            yield chunk.text
     if in_thought:
         yield "</think>"
 

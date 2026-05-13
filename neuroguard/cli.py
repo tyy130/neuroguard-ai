@@ -46,6 +46,7 @@ from neuroguard.ui import (
 
 MAX_FILE_BYTES = 128_000  # ~4K lines — guard against runaway API costs
 SUPPORTED_EXTENSIONS = {".py", ".js", ".jsx", ".ts", ".tsx"}
+EXCLUDED_DIRS = {"node_modules", "dist", "build", ".next", "venv", ".venv", "__pycache__", ".git"}
 
 _PYTHON_EXTS = {".py"}
 _JS_EXTS = {".js", ".jsx", ".ts", ".tsx"}
@@ -79,7 +80,10 @@ def main(
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _extract_rewrite(response: str, ext: str = ".py") -> str:
-    """Pull the first fenced code block matching the file's language from the model response."""
+    """
+    Extract the secure rewrite from the model response.
+    Anchors to ## Secure Rewrite first to avoid grabbing preamble code snippets.
+    """
     lang_aliases = {
         ".py": ["python"],
         ".js": ["javascript", "js"],
@@ -88,15 +92,25 @@ def _extract_rewrite(response: str, ext: str = ".py") -> str:
         ".tsx": ["typescript", "tsx", "ts"],
     }
     langs = lang_aliases.get(ext, ["python"])
+
+    # Prefer the region after ## Secure Rewrite to avoid preamble snippets
+    search_region = response
+    rewrite_idx = response.find("## Secure Rewrite")
+    if rewrite_idx != -1:
+        search_region = response[rewrite_idx:]
+
     for lang in langs:
-        match = re.search(rf"```{lang}\s*\n(.*?)```", response, re.DOTALL | re.IGNORECASE)
+        match = re.search(rf"```{lang}\s*\n(.*?)```", search_region, re.DOTALL | re.IGNORECASE)
         if match:
             return match.group(1).strip()
-    # Fallback: any fenced block after ## Secure Rewrite
-    idx = response.find("## Secure Rewrite")
-    if idx != -1:
-        block = response[idx + len("## Secure Rewrite"):].strip()
-        return re.sub(r"^```[a-z]*\n?|```$", "", block, flags=re.MULTILINE).strip()
+
+    # Fallback: any fenced block in the rewrite section
+    if rewrite_idx != -1:
+        block = search_region[len("## Secure Rewrite"):].strip()
+        cleaned = re.sub(r"^```[a-z]*\n?", "", block, flags=re.MULTILINE)
+        cleaned = re.sub(r"```\s*$", "", cleaned, flags=re.MULTILINE)
+        return cleaned.strip()
+
     return response.strip()
 
 
@@ -143,8 +157,7 @@ def _collect_files(target: Path) -> list[Path]:
         files = sorted(
             p for p in target.rglob("*")
             if p.is_file() and p.suffix in SUPPORTED_EXTENSIONS
-            and not any(part.startswith(".") for part in p.parts)
-            and "__pycache__" not in p.parts
+            and not any(part in EXCLUDED_DIRS or part.startswith(".") for part in p.parts)
         )
         if not files:
             console.print(f"[yellow]No supported files found in {target}[/yellow]")
@@ -382,10 +395,10 @@ def install_hooks() -> None:
     hooks:
       - id: neuroguard
         name: NeuroGuard Security Review
-        entry: neuroguard review
+        entry: neuroguard review .
         language: system
         files: \\.(py|js|jsx|ts|tsx)$
-        pass_filenames: true
+        pass_filenames: false
         require_serial: true
 """
 
