@@ -9,9 +9,9 @@
 
 **[neuroguard-psi.vercel.app](https://neuroguard-psi.vercel.app)** · **[github.com/tyy130/neuroguard](https://github.com/tyy130/neuroguard)**
 
-NeuroGuard reviews Python code for security vulnerabilities in real-time — streaming Gemma 4's full cognitive trace on the left while it produces a verified, secure rewrite on the right.
+NeuroGuard reviews Python and JavaScript/TypeScript code for security vulnerabilities in real-time — streaming Gemma 4's full cognitive trace on the left while it produces a verified, secure rewrite on the right.
 
-> Built for the [Dev.to Google Gemma 4 Challenge](https://dev.to/challenges/google-gemma-2026-05-06) · **Python only in v0.1** · JS/TS coming in v0.2
+> Built for the [Dev.to Google Gemma 4 Challenge](https://dev.to/challenges/google-gemma-2026-05-06) · Python · JavaScript · TypeScript
 
 ---
 
@@ -64,7 +64,7 @@ neuroguard review app.py
 
 ## Installation
 
-**Requirements:** Python 3.12+ · Free [Google AI Studio](https://aistudio.google.com) API key
+**Requirements:** Python 3.12+ · Free [Google AI Studio](https://aistudio.google.com) API key · Node.js (optional, for JS/TS projects)
 
 ```bash
 pip install neuroguard
@@ -87,10 +87,14 @@ GEMINI_API_KEY=your_api_key_here
 ## Usage
 
 ```bash
-# Review a single file
+# Review a single Python file
 neuroguard review app.py
 
-# Review an entire directory
+# Review a JavaScript or TypeScript file
+neuroguard review server.js
+neuroguard review api.ts
+
+# Review an entire directory (Python + JS/TS)
 neuroguard review src/
 
 # Save the secure rewrite
@@ -181,9 +185,11 @@ neuroguard/
 ├── cli.py             # Typer CLI — review, install-hooks, --version
 ├── agent.py           # Gemma 4 streaming client (google-genai SDK)
 ├── thinking_parser.py # Real-time <think>…</think> stream splitter
-├── prompts.py         # System prompt (activates Thinking Mode via <|think|>)
+├── prompts.py         # Language-aware system prompt (activates Thinking Mode via <|think|>)
+├── integrations.py    # Slack Block Kit, generic webhook, GitHub PR comments
 ├── tools/
-│   └── sast.py        # Bandit subprocess wrapper → structured findings
+│   ├── sast.py        # Bandit subprocess wrapper → Python findings
+│   └── js_sast.py     # semgrep/regex SAST → JS/TS findings
 └── ui.py              # Rich split-pane terminal layout
 ```
 
@@ -206,16 +212,19 @@ Retries on 429/503 with exponential backoff and automatically falls back to the 
 
 ## What NeuroGuard Catches
 
-| Vulnerability             | OWASP | Detected |
-| ------------------------- | ----- | -------- |
-| SQL Injection             | A03   | ✓        |
-| Hardcoded secrets         | A02   | ✓        |
-| Missing authentication    | A01   | ✓        |
-| `eval()` / code injection | A03   | ✓        |
-| Debug mode in production  | A05   | ✓        |
-| Insecure deserialization  | A08   | ✓        |
-| Weak cryptography         | A02   | ✓        |
-| Path traversal            | A01   | ✓        |
+| Vulnerability                     | OWASP | Python | JS/TS |
+| --------------------------------- | ----- | ------ | ----- |
+| SQL Injection                     | A03   | ✓      | ✓     |
+| Hardcoded secrets                 | A02   | ✓      | ✓     |
+| Missing authentication            | A01   | ✓      | ✓     |
+| `eval()` / code injection         | A03   | ✓      | ✓     |
+| Debug mode in production          | A05   | ✓      | ✓     |
+| Insecure deserialization          | A08   | ✓      | —     |
+| Weak cryptography / Math.random() | A02   | ✓      | ✓     |
+| Path traversal                    | A01   | ✓      | ✓     |
+| XSS (innerHTML / dangerouslySet)  | A03   | —      | ✓     |
+| Command injection (exec)          | A03   | —      | ✓     |
+| Prototype pollution               | A08   | —      | ✓     |
 
 NeuroGuard is a **first-pass** tool. It does not replace a full penetration test or human security review. Runtime behavior, business logic flaws, and infrastructure misconfigurations are out of scope.
 

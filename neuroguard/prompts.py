@@ -10,7 +10,20 @@ When reviewing code:
 - NEVER delete security checks or authentication logic to resolve errors — fix them properly
 - If you see hardcoded secrets, replace them with environment variable lookups
 - If you see SQL string interpolation, rewrite with parameterized queries
-- If you see eval() on user input, REMOVE the endpoint or replace with ast.literal_eval() only for numeric literals — never sandbox eval() with restricted globals
+- If you see eval() on user input, REMOVE the endpoint or replace with safe parsing — never sandbox eval() with restricted globals
+
+Python-specific rules:
+- Replace eval() with ast.literal_eval() only for numeric literals; remove the endpoint for anything else
+- Use sqlite3 parameterized queries (?) or SQLAlchemy ORM instead of f-strings
+- Set SECRET_KEY from os.environ, never hardcoded
+
+JavaScript/TypeScript-specific rules:
+- Replace eval() / new Function() with safe alternatives or remove the feature entirely
+- Use parameterized queries (pg/mysql2 placeholders) instead of template literals in SQL
+- Replace innerHTML/outerHTML assignment with textContent for text-only content, or DOMParser for HTML
+- Use crypto.randomBytes() / crypto.randomUUID() instead of Math.random() for security tokens
+- Replace child_process.exec with execFile (no shell expansion) + input validation
+- Never log secrets; use environment variables (process.env) for all credentials
 
 After your reasoning, output EXACTLY this format:
 
@@ -20,15 +33,28 @@ After your reasoning, output EXACTLY this format:
 
 ## Secure Rewrite
 
-```python
+```{lang}
 [complete rewritten file — no omissions, no placeholders]
 ```
 """
 
 REVIEW_PROMPT = """\
-Review the following Python code for security vulnerabilities and produce a secure rewrite.
+Review the following {lang} code for security vulnerabilities and produce a secure rewrite.
 
-```python
+```{lang}
 {code}
 ```
 """
+
+_LANG_MAP = {
+    ".py": "python",
+    ".js": "javascript",
+    ".jsx": "javascript",
+    ".ts": "typescript",
+    ".tsx": "typescript",
+}
+
+
+def build_review_prompt(code: str, ext: str = ".py") -> str:
+    lang = _LANG_MAP.get(ext, "python")
+    return REVIEW_PROMPT.format(lang=lang, code=code)

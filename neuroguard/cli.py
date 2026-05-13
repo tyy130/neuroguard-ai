@@ -11,7 +11,6 @@ Usage:
 
 import json
 import re
-import sys
 import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
@@ -29,8 +28,10 @@ load_dotenv()
 
 from neuroguard import __version__
 from neuroguard.agent import FALLBACK_MODEL, PRIMARY_MODEL, stream_review
+from neuroguard.integrations import fire_all, notify_slack, webhook
 from neuroguard.thinking_parser import ThinkingStreamParser
-from neuroguard.tools.sast import count_by_severity, run_bandit
+from neuroguard.tools.sast import run_bandit
+from neuroguard.tools.js_sast import run_js_sast
 from neuroguard.ui import (
     console,
     err_console,
@@ -44,7 +45,10 @@ from neuroguard.ui import (
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 MAX_FILE_BYTES = 128_000  # ~4K lines — guard against runaway API costs
-SUPPORTED_EXTENSIONS = {".py"}  # v0.1 — Python only
+SUPPORTED_EXTENSIONS = {".py", ".js", ".jsx", ".ts", ".tsx"}
+
+_PYTHON_EXTS = {".py"}
+_JS_EXTS = {".js", ".jsx", ".ts", ".tsx"}
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
@@ -74,11 +78,21 @@ def main(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _extract_python_rewrite(response: str) -> str:
-    """Pull the first ```python ... ``` block from the model response."""
-    match = re.search(r"```python\s*\n(.*?)```", response, re.DOTALL)
-    if match:
-        return match.group(1).strip()
+def _extract_rewrite(response: str, ext: str = ".py") -> str:
+    """Pull the first fenced code block matching the file's language from the model response."""
+    lang_aliases = {
+        ".py": ["python"],
+        ".js": ["javascript", "js"],
+        ".jsx": ["javascript", "jsx", "js"],
+        ".ts": ["typescript", "ts"],
+        ".tsx": ["typescript", "tsx", "ts"],
+    }
+    langs = lang_aliases.get(ext, ["python"])
+    for lang in langs:
+        match = re.search(rf"```{lang}\s*\n(.*?)```", response, re.DOTALL | re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    # Fallback: any fenced block after ## Secure Rewrite
     idx = response.find("## Secure Rewrite")
     if idx != -1:
         block = response[idx + len("## Secure Rewrite"):].strip()
@@ -86,12 +100,15 @@ def _extract_python_rewrite(response: str) -> str:
     return response.strip()
 
 
-def _is_valid_python(code: str) -> bool:
-    try:
-        ast.parse(code)
-        return True
-    except SyntaxError:
-        return False
+def _is_valid_code(code: str, ext: str = ".py") -> bool:
+    if ext in _PYTHON_EXTS:
+        try:
+            ast.parse(code)
+            return True
+        except SyntaxError:
+            return False
+    # For JS/TS we don't have a parser available — trust non-empty output
+    return bool(code.strip())
 
 
 def _validate_file(path: Path) -> str:
@@ -137,6 +154,14 @@ def _collect_files(target: Path) -> list[Path]:
     raise typer.Exit(1)
 
 
+def _run_sast(code: str, ext: str) -> list:
+    if ext in _PYTHON_EXTS:
+        return run_bandit(code)
+    if ext in _JS_EXTS:
+        return run_js_sast(code, ext)
+    return []
+
+
 def _review_single(
     path: Path,
     code: str,
@@ -146,11 +171,12 @@ def _review_single(
     output_format: str,
 ) -> dict:
     """Review one file. Returns result dict (for JSON aggregation)."""
+    ext = path.suffix.lower()
 
     if output_format == "text":
         render_header(str(path), model)
 
-    original_findings = [] if no_sast else run_bandit(code)
+    original_findings = [] if no_sast else _run_sast(code, ext)
     original_count = len(original_findings)
 
     thinking_buf: list[str] = []
@@ -167,7 +193,7 @@ def _review_single(
 
     if output_format == "text":
         with Live(layout, console=console, refresh_per_second=12, vertical_overflow="visible"):
-            for chunk in stream_review(code, model=model):
+            for chunk in stream_review(code, model=model, ext=ext):
                 parser.feed(chunk)
                 layout["thinking"].update(thinking_panel("".join(thinking_buf)))
                 layout["output"].update(output_panel("".join(response_buf)))
@@ -177,27 +203,27 @@ def _review_single(
     else:
         # Non-interactive: all status to stderr, stdout reserved for JSON
         err_console.print(f"[dim]Analyzing {path} with Gemma 4 (thinking mode on)…[/dim]")
-        for chunk in stream_review(code, model=model):
+        for chunk in stream_review(code, model=model, ext=ext):
             parser.feed(chunk)
         parser.finalize()
 
     full_response = "".join(response_buf)
-    secure_code = _extract_python_rewrite(full_response)
-    rewrite_valid = _is_valid_python(secure_code) if secure_code else False
+    secure_code = _extract_rewrite(full_response, ext)
+    rewrite_valid = _is_valid_code(secure_code, ext) if secure_code else False
 
     rewrite_findings = []
     if not no_sast and secure_code:
-        rewrite_findings = run_bandit(secure_code)
+        rewrite_findings = _run_sast(secure_code, ext)
 
     if output_format == "text":
         render_sast_report("Secure Rewrite", rewrite_findings, original_count=original_count)
         if secure_code and not rewrite_valid:
             console.print(
-                "[yellow]Warning:[/yellow] The rewrite contains a syntax error. "
+                "[yellow]Warning:[/yellow] The rewrite may contain issues. "
                 "Review manually before using."
             )
     elif not rewrite_valid and secure_code:
-        err_console.print(f"[yellow]Warning:[/yellow] {path}: rewrite has a syntax error.")
+        err_console.print(f"[yellow]Warning:[/yellow] {path}: rewrite may have issues.")
 
     result = {
         "file": str(path),
@@ -227,17 +253,58 @@ def _review_single(
     return result
 
 
+def _fire_integrations(
+    result: dict,
+    slack_webhook: Optional[str],
+    extra_webhook: Optional[str],
+    output_format: str,
+) -> None:
+    """Fire all configured integrations, merging flag overrides with env vars."""
+    import os
+
+    # Flag overrides take precedence over env vars
+    if slack_webhook:
+        os.environ["NEUROGUARD_SLACK_WEBHOOK"] = slack_webhook
+    if extra_webhook:
+        os.environ["NEUROGUARD_WEBHOOK_URL"] = extra_webhook
+
+    fired = []
+
+    if os.environ.get("NEUROGUARD_SLACK_WEBHOOK"):
+        ok = notify_slack(os.environ["NEUROGUARD_SLACK_WEBHOOK"], result)
+        if output_format == "text":
+            fired.append(("Slack", ok))
+
+    if os.environ.get("NEUROGUARD_WEBHOOK_URL"):
+        ok = webhook(os.environ["NEUROGUARD_WEBHOOK_URL"], result)
+        if output_format == "text":
+            fired.append(("Webhook", ok))
+
+    from neuroguard.integrations import github_pr
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        ok = github_pr(result)
+        if output_format == "text":
+            fired.append(("GitHub PR", ok))
+
+    if fired and output_format == "text":
+        for name, ok in fired:
+            status = "[green]✓[/green]" if ok else "[red]✗[/red]"
+            console.print(f"  {status} {name} notified")
+
+
 # ── Commands ──────────────────────────────────────────────────────────────────
 
 @app.command()
 def review(
     target: Path = typer.Argument(..., help="Python file or directory to review."),
     model: str = typer.Option(PRIMARY_MODEL, "--model", "-m", help="Gemma 4 model variant."),
-    no_sast: bool = typer.Option(False, "--no-sast", help="Skip Bandit SAST verification."),
+    no_sast: bool = typer.Option(False, "--no-sast", help="Skip SAST verification."),
     save: Optional[Path] = typer.Option(None, "--save", "-s", help="Write secure rewrite to this path (single-file mode only)."),
     output_format: str = typer.Option("text", "--format", "-f", help="Output format: text | json"),
+    slack: Optional[str] = typer.Option(None, "--notify-slack", help="Slack webhook URL (or set NEUROGUARD_SLACK_WEBHOOK)."),
+    hook: Optional[str] = typer.Option(None, "--webhook", help="Generic webhook URL to POST results (or set NEUROGUARD_WEBHOOK_URL)."),
 ) -> None:
-    """Review Python code for security vulnerabilities using Gemma 4 Thinking Mode."""
+    """Review Python or JS/TS code for security vulnerabilities using Gemma 4 Thinking Mode."""
 
     import os
     if not os.environ.get("GEMINI_API_KEY") and not os.environ.get("GOOGLE_API_KEY"):
@@ -279,6 +346,7 @@ def review(
             output_format=output_format,
         )
         results.append(result)
+        _fire_integrations(result, slack, hook, output_format)
 
         # Exit non-zero if original had HIGH/MEDIUM findings (useful for CI)
         if result["original_findings"] > 0:
@@ -315,7 +383,7 @@ def install_hooks() -> None:
         name: NeuroGuard Security Review
         entry: neuroguard review
         language: system
-        types: [python]
+        types_or: [python, javascript, ts]
         pass_filenames: true
         require_serial: true
 """

@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore", message=".*MALFORMED_RESPONSE.*")
 from google import genai
 from google.genai import types
 
-from neuroguard.prompts import REVIEW_PROMPT, SYSTEM_PROMPT
+from neuroguard.prompts import build_review_prompt, SYSTEM_PROMPT
 
 # Prefer the larger dense model; fall back to MoE for rate limits / quota
 PRIMARY_MODEL = "gemma-4-31b-it"
@@ -68,7 +68,7 @@ def _stream_model(client: genai.Client, model: str, prompt: str) -> Iterator[str
         yield "</think>"
 
 
-def stream_review(code: str, model: str = PRIMARY_MODEL) -> Iterator[str]:
+def stream_review(code: str, model: str = PRIMARY_MODEL, ext: str = ".py") -> Iterator[str]:
     """
     Stream Gemma 4's response for a code security review.
 
@@ -78,13 +78,13 @@ def stream_review(code: str, model: str = PRIMARY_MODEL) -> Iterator[str]:
     Retries on 429/503 with backoff; falls back to MoE model on persistent failure.
     """
     client = _get_client()
-    prompt = REVIEW_PROMPT.format(code=code)
+    prompt = build_review_prompt(code=code, ext=ext)
     models_to_try = [model] if model != PRIMARY_MODEL else [PRIMARY_MODEL, FALLBACK_MODEL]
 
     for attempt_model in models_to_try:
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
-                yield from _stream_model(client, attempt_model, prompt)
+                yield from _stream_model(client, attempt_model, prompt)  # type: ignore[misc]
                 return
             except Exception as exc:
                 if _is_retryable(exc) and attempt < _MAX_RETRIES:
