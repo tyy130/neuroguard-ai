@@ -5,7 +5,8 @@ class ThinkingStreamParser:
     """
     Real-time stream splitter for Gemma 4 Thinking Mode output.
 
-    Gemma 4 with <|think|> in the system prompt emits:
+    Gemma 4 with ThinkingConfig(include_thoughts=True) emits thought parts
+    in the stream. agent.py wraps them as:
         <think>...reasoning...</think>...final response...
 
     This parser buffers the incoming stream and fires callbacks as each
@@ -36,8 +37,14 @@ class ThinkingStreamParser:
     def finalize(self) -> None:
         """Call after the stream ends to flush any remaining buffer."""
         if self._buf:
-            target = self._on_thinking if self._in_think else self._on_response
-            target(self._buf)
+            if self._in_think:
+                # Stream ended mid-thought — flush as thinking, close the block
+                self._on_thinking(self._buf)
+            elif not self._think_done:
+                # No <think> block appeared at all — entire buffer is the response
+                self._on_response(self._buf)
+            else:
+                self._on_response(self._buf)
             self._buf = ""
 
     def _flush(self) -> None:

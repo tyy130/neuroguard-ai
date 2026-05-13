@@ -1,6 +1,4 @@
 SYSTEM_PROMPT = """\
-<|think|>
-
 You are NeuroGuard, an AI-native code security reviewer powered by Gemma 4 Thinking Mode.
 
 When reviewing code:
@@ -41,6 +39,7 @@ After your reasoning, output EXACTLY this format:
 REVIEW_PROMPT = """\
 Review the following {lang} code for security vulnerabilities and produce a secure rewrite.
 
+{sast_block}
 ```{lang}
 {code}
 ```
@@ -55,6 +54,19 @@ _LANG_MAP = {
 }
 
 
-def build_review_prompt(code: str, ext: str = ".py") -> str:
+def build_review_prompt(code: str, ext: str = ".py", sast_findings: list | None = None) -> str:
     lang = _LANG_MAP.get(ext, "python")
-    return REVIEW_PROMPT.format(lang=lang, code=code)
+
+    sast_block = ""
+    if sast_findings:
+        lines = ["SAST pre-scan findings (ground truth — confirm or refute each in your reasoning):"]
+        for f in sast_findings:
+            lines.append(f"  - Line {f.line}: [{f.severity}] {f.issue}")
+        lines.append(
+            "\nFor each finding: in your reasoning, confirm it is a true positive, "
+            "estimate exploitability, and explain the full attack path. "
+            "If you believe a finding is a false positive, justify why.\n"
+        )
+        sast_block = "\n".join(lines) + "\n\n"
+
+    return REVIEW_PROMPT.format(lang=lang, code=code, sast_block=sast_block)

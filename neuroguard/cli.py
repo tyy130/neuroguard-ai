@@ -193,7 +193,7 @@ def _review_single(
 
     if output_format == "text":
         with Live(layout, console=console, refresh_per_second=12, vertical_overflow="visible"):
-            for chunk in stream_review(code, model=model, ext=ext):
+            for chunk in stream_review(code, model=model, ext=ext, sast_findings=original_findings):
                 parser.feed(chunk)
                 layout["thinking"].update(thinking_panel("".join(thinking_buf)))
                 layout["output"].update(output_panel("".join(response_buf)))
@@ -203,7 +203,7 @@ def _review_single(
     else:
         # Non-interactive: all status to stderr, stdout reserved for JSON
         err_console.print(f"[dim]Analyzing {path} with Gemma 4 (thinking mode on)…[/dim]")
-        for chunk in stream_review(code, model=model, ext=ext):
+        for chunk in stream_review(code, model=model, ext=ext, sast_findings=original_findings):
             parser.feed(chunk)
         parser.finalize()
 
@@ -227,9 +227,10 @@ def _review_single(
 
     result = {
         "file": str(path),
+        "ext": ext,
         "model": model,
         "original_findings": original_count,
-        "rewrite_valid_python": rewrite_valid,
+        "rewrite_valid": rewrite_valid,
         "rewrite_findings": [
             {
                 "severity": f.severity,
@@ -383,7 +384,7 @@ def install_hooks() -> None:
         name: NeuroGuard Security Review
         entry: neuroguard review
         language: system
-        types_or: [python, javascript, ts]
+        files: \\.(py|js|jsx|ts|tsx)$
         pass_filenames: true
         require_serial: true
 """

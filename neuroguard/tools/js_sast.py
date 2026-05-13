@@ -76,8 +76,8 @@ rules:
 
   - id: prototype-pollution
     patterns:
-      - pattern: Object.assign({}, $OBJ)
-    message: "Potential prototype pollution via Object.assign on untrusted input"
+      - pattern: $OBJ[$KEY] = $VAL
+    message: "Potential prototype pollution via dynamic bracket-notation key assignment"
     severity: WARNING
     languages: [javascript, typescript]
 
@@ -101,22 +101,23 @@ rules:
 
 _PATTERNS = [
     (r"\beval\s*\(", "HIGH", "eval() executes arbitrary code (RCE risk)"),
-    (r"(?i)(secret|password|api_key|token|passwd|private_key)\s*=\s*['\"].+['\"]", "HIGH", "Hardcoded secret"),
+    # Tighter secret pattern: assignment to a non-trivial string literal (excludes error messages, labels)
+    (r"(?i)\b(secret_key|api_key|api_secret|auth_token|access_token|private_key|passwd|db_password)\s*[=:]\s*['\"][A-Za-z0-9+/=_\-]{8,}['\"]", "HIGH", "Hardcoded secret"),
     (r"(SELECT|INSERT|UPDATE|DELETE).*\$\{", "HIGH", "SQL injection via template literal"),
     (r"(SELECT|INSERT|UPDATE|DELETE).*['\"\s]\s*\+\s*", "HIGH", "SQL injection via string concatenation"),
     (r"dangerouslySetInnerHTML\s*=\s*\{", "HIGH", "dangerouslySetInnerHTML XSS risk"),
     (r"\bdocument\.write\s*\(", "MEDIUM", "document.write() XSS risk"),
-    (r"exec(?:Sync)?\s*\(", "HIGH", "Shell command execution — injection risk"),
-    (r"Math\.random\s*\(\s*\)", "MEDIUM", "Math.random() not cryptographically secure"),
-    (r"(?i)debug\s*[:=]\s*true", "MEDIUM", "Debug mode enabled in production"),
-    (r"__proto__|prototype\s*\[", "HIGH", "Potential prototype pollution"),
-    (r"require\s*\(\s*['\"]child_process['\"]", "HIGH", "child_process loaded — verify inputs are sanitized"),
-    (r"fs\.(?:readFile|writeFile|unlink|rmdir|mkdir)Sync?\s*\(", "MEDIUM", "Filesystem op — verify path is not user-controlled"),
+    (r"\bexec\s*\(", "HIGH", "child_process.exec — shell injection risk if input is user-controlled"),
+    (r"\bexecSync\s*\(", "HIGH", "child_process.execSync — shell injection risk if input is user-controlled"),
+    (r"Math\.random\s*\(\s*\)", "MEDIUM", "Math.random() not cryptographically secure — use crypto.randomBytes()"),
+    (r"(?i)\bdebug\s*[:=]\s*true", "MEDIUM", "Debug mode enabled in production"),
+    (r"__proto__|\[\s*['\"]__proto__['\"]", "HIGH", "Potential prototype pollution via __proto__ key"),
     (r"\.innerHTML\s*=", "HIGH", "innerHTML assignment — XSS if content is user-controlled"),
     (r"\.outerHTML\s*=", "HIGH", "outerHTML assignment — XSS if content is user-controlled"),
     (r"new\s+Function\s*\(", "HIGH", "new Function() executes arbitrary code"),
     (r"setTimeout\s*\(\s*['\"]", "MEDIUM", "setTimeout with string argument executes arbitrary code"),
     (r"setInterval\s*\(\s*['\"]", "MEDIUM", "setInterval with string argument executes arbitrary code"),
+    (r"console\s*\.\s*log\s*\(.*(?:key|secret|token|password|passwd|credential)", "MEDIUM", "Credential logged to console"),
 ]
 
 
@@ -159,20 +160,22 @@ def _run_semgrep(code: str, lang: str, tmp_path: str) -> list[Finding] | None:
 
 def _run_regex(code: str) -> list[Finding]:
     """Regex-based fallback when semgrep is unavailable."""
+    seen: set[tuple[int, str]] = set()
     findings = []
     lines = code.splitlines()
     for i, line in enumerate(lines, start=1):
         for pattern, severity, message in _PATTERNS:
             if re.search(pattern, line):
-                findings.append(Finding(
-                    severity=severity,
-                    confidence="MEDIUM",
-                    issue=message,
-                    line=i,
-                    code=line.strip(),
-                ))
-                break  # one finding per line maximum
-    # Keep only HIGH/MEDIUM
+                key = (i, message)
+                if key not in seen:
+                    seen.add(key)
+                    findings.append(Finding(
+                        severity=severity,
+                        confidence="MEDIUM",
+                        issue=message,
+                        line=i,
+                        code=line.strip(),
+                    ))
     return [f for f in findings if f.severity in ("HIGH", "MEDIUM")]
 
 

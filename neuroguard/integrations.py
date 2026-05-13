@@ -13,6 +13,8 @@ from typing import Optional
 
 import httpx
 
+from neuroguard import __version__
+
 
 # ── Generic Webhook ───────────────────────────────────────────────────────────
 
@@ -23,11 +25,11 @@ def webhook(url: str, result: dict, timeout: int = 10) -> bool:
             url,
             json={
                 "source": "neuroguard",
-                "version": "0.1.0",
+                "version": __version__,
                 **result,
             },
             timeout=timeout,
-            headers={"Content-Type": "application/json", "User-Agent": "neuroguard/0.1.0"},
+            headers={"Content-Type": "application/json", "User-Agent": f"neuroguard/{__version__}"},
         )
         r.raise_for_status()
         return True
@@ -190,6 +192,10 @@ def _github_run_url() -> Optional[str]:
 
 
 def _format_pr_comment(result: dict, n: int, rewrite_clean: bool, file: str, model: str) -> str:
+    ext = result.get("ext", ".py")
+    _lang_map = {".py": "python", ".js": "javascript", ".jsx": "javascript", ".ts": "typescript", ".tsx": "typescript"}
+    lang = _lang_map.get(ext, "python")
+
     if n == 0:
         return (
             f"## ✅ NeuroGuard — No vulnerabilities found\n\n"
@@ -199,20 +205,18 @@ def _format_pr_comment(result: dict, n: int, rewrite_clean: bool, file: str, mod
 
     sast_badge = "✅ Secure rewrite is **CLEAN**" if rewrite_clean else "⚠️ Secure rewrite has remaining findings — review manually"
 
-    # Extract vulnerability summary from response
     response = result.get("response", "")
     vuln_section = ""
     if "## Vulnerabilities Found" in response:
         start = response.index("## Vulnerabilities Found")
         end = response.find("## Secure Rewrite", start)
         raw = response[start:end].strip() if end != -1 else response[start:].strip()
-        # Trim to keep the comment readable
         lines = raw.splitlines()[:12]
         vuln_section = "\n".join(lines)
 
     secure_code = result.get("secure_code", "")
     code_block = (
-        f"\n<details>\n<summary>View secure rewrite</summary>\n\n```python\n{secure_code[:3000]}"
+        f"\n<details>\n<summary>View secure rewrite</summary>\n\n```{lang}\n{secure_code[:3000]}"
         f"{'...' if len(secure_code) > 3000 else ''}\n```\n\n</details>"
         if secure_code else ""
     )

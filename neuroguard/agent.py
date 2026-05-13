@@ -32,7 +32,19 @@ def _is_retryable(exc: Exception) -> bool:
     return any(str(c) in msg for c in _RETRYABLE_CODES) or "UNAVAILABLE" in msg
 
 
-def _stream_model(client: genai.Client, model: str, prompt: str) -> Iterator[str]:
+def _thinking_budget(sast_findings: list) -> int:
+    """Scale thinking depth to finding severity — more findings = deeper reasoning."""
+    high = sum(1 for f in sast_findings if getattr(f, "severity", "") == "HIGH")
+    med  = sum(1 for f in sast_findings if getattr(f, "severity", "") == "MEDIUM")
+    return min(2048 + high * 512 + med * 256, 16384)
+
+
+def _stream_model(
+    client: genai.Client,
+    model: str,
+    prompt: str,
+    thinking_budget: int,
+) -> Iterator[str]:
     """Inner streaming loop — single model, no retry logic."""
     response = client.models.generate_content_stream(
         model=model,
@@ -40,14 +52,18 @@ def _stream_model(client: genai.Client, model: str, prompt: str) -> Iterator[str
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             temperature=0.2,
-            max_output_tokens=32768,  # thinking tokens count against this limit
+            max_output_tokens=32768,
+            thinking_config=types.ThinkingConfig(
+                include_thoughts=True,
+                thinking_budget=thinking_budget,
+            ),
         ),
     )
     in_thought = False
     for chunk in response:
         if chunk.candidates:
             for part in chunk.candidates[0].content.parts:
-                is_thought = hasattr(part, "thought") and part.thought
+                is_thought = getattr(part, "thought", False)
                 if is_thought:
                     if not in_thought:
                         yield "<think>"
@@ -68,29 +84,36 @@ def _stream_model(client: genai.Client, model: str, prompt: str) -> Iterator[str
         yield "</think>"
 
 
-def stream_review(code: str, model: str = PRIMARY_MODEL, ext: str = ".py") -> Iterator[str]:
+def stream_review(
+    code: str,
+    model: str = PRIMARY_MODEL,
+    ext: str = ".py",
+    sast_findings: list | None = None,
+) -> Iterator[str]:
     """
-    Stream Gemma 4's response for a code security review.
+    Stream Gemma 4's security review with Thinking Mode active.
 
-    Yields raw text chunks containing <think>...</think> reasoning followed
-    by the final response. Use ThinkingStreamParser to split them.
+    Yields chunks containing <think>...</think> reasoning then the final response.
+    Use ThinkingStreamParser to route them to separate panes.
 
+    Thinking budget scales with SAST severity — more findings = deeper reasoning.
     Retries on 429/503 with backoff; falls back to MoE model on persistent failure.
     """
     client = _get_client()
-    prompt = build_review_prompt(code=code, ext=ext)
+    sast_findings = sast_findings or []
+    prompt = build_review_prompt(code=code, ext=ext, sast_findings=sast_findings)
+    budget = _thinking_budget(sast_findings)
     models_to_try = [model] if model != PRIMARY_MODEL else [PRIMARY_MODEL, FALLBACK_MODEL]
 
     for attempt_model in models_to_try:
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
-                yield from _stream_model(client, attempt_model, prompt)  # type: ignore[misc]
+                yield from _stream_model(client, attempt_model, prompt, budget)  # type: ignore[misc]
                 return
             except Exception as exc:
                 if _is_retryable(exc) and attempt < _MAX_RETRIES:
-                    wait = 2 ** attempt
-                    time.sleep(wait)
+                    time.sleep(2 ** attempt)
                     continue
                 if attempt_model == PRIMARY_MODEL and models_to_try[-1] != PRIMARY_MODEL:
-                    break  # try fallback model
+                    break
                 raise
