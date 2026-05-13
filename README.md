@@ -2,7 +2,7 @@
 
 **AI-native code security review powered by Gemma 4 Thinking Mode.**
 
-[![PyPI version](https://img.shields.io/badge/pypi-v0.1.0-blue)](https://pypi.org/project/neuroguard/)
+[![PyPI version](https://img.shields.io/badge/pypi-v0.1.0-blue)](https://pypi.org/project/neuroguard-ai/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Gemma 4](https://img.shields.io/badge/Powered%20by-Gemma%204-orange)](https://ai.google.dev/gemma)
@@ -54,7 +54,7 @@ After:  ✓ CLEAN — Gemma 4's reasoning explains every fix
 ## Quickstart
 
 ```bash
-pip install neuroguard
+pip install neuroguard-ai
 export GEMINI_API_KEY=your_key   # free at aistudio.google.com
 
 neuroguard review app.py
@@ -67,7 +67,7 @@ neuroguard review app.py
 **Requirements:** Python 3.12+ · Free [Google AI Studio](https://aistudio.google.com) API key · Node.js (optional, for JS/TS projects)
 
 ```bash
-pip install neuroguard
+pip install neuroguard-ai
 ```
 
 **Configure your API key** (one-time):

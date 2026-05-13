@@ -138,7 +138,7 @@
         >
           <span class="text-zinc-500 font-mono text-sm select-none">$</span>
           <code class="font-mono text-brand-500 text-sm" id="install-cmd"
-            >pip install neuroguard</code
+            >pip install neuroguard-ai</code
           >
           <button
             onclick="copyInstall()"
@@ -378,7 +378,7 @@
               target="_blank"
               class="bg-brand-500 hover:bg-brand-600 text-black font-semibold px-6 py-3 rounded-lg transition-colors"
             >
-              pip install neuroguard
+              pip install neuroguard-ai
             </a>
             <a
               href="https://github.com/tyy130/neuroguard"
@@ -429,7 +429,7 @@
 
     <script>
       function copyInstall() {
-        navigator.clipboard.writeText("pip install neuroguard").then(() => {
+        navigator.clipboard.writeText("pip install neuroguard-ai").then(() => {
           document.getElementById("copy-icon").classList.add("hidden");
           document.getElementById("check-icon").classList.remove("hidden");
           setTimeout(() => {

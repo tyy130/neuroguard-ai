@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "neuroguard"
+name = "neuroguard-ai"
 version = "0.1.0"
 description = "AI-native code security review powered by Gemma 4 Thinking Mode"
 readme = "README.md"
@@ -32,8 +32,8 @@ dependencies = [
 neuroguard = "neuroguard.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/tyler-hill/neuroguard"
-"Bug Tracker" = "https://github.com/tyler-hill/neuroguard/issues"
+Homepage = "https://github.com/tyy130/neuroguard"
+"Bug Tracker" = "https://github.com/tyy130/neuroguard/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["neuroguard"]
