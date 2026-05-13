@@ -362,23 +362,86 @@
           Gemma 4 reasons through OWASP Top 10 vulnerabilities in your code
         </p>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[ ["SQL Injection", "A03"], ["Hardcoded Secrets", "A02"], ["Missing
-          Auth", "A01"], ["Code Injection / eval()", "A03"], ["Debug Mode
-          Exposure", "A05"], ["Insecure Deserialization", "A08"], ["Weak
-          Cryptography", "A02"], ["Path Traversal", "A01"], ].map(([name, code])
-          => `
           <div
             class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-start gap-3"
           >
             <span class="text-brand-500 text-lg mt-0.5 flex-shrink-0">✓</span>
             <div>
-              <p class="text-sm font-medium text-white">${name}</p>
-              <p class="text-xs text-zinc-600 font-mono mt-0.5">
-                OWASP ${code}
+              <p class="text-sm font-medium text-white">SQL Injection</p>
+              <p class="text-xs text-zinc-500 font-mono mt-0.5">OWASP A03</p>
+            </div>
+          </div>
+          <div
+            class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-start gap-3"
+          >
+            <span class="text-brand-500 text-lg mt-0.5 flex-shrink-0">✓</span>
+            <div>
+              <p class="text-sm font-medium text-white">Hardcoded Secrets</p>
+              <p class="text-xs text-zinc-500 font-mono mt-0.5">OWASP A02</p>
+            </div>
+          </div>
+          <div
+            class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-start gap-3"
+          >
+            <span class="text-brand-500 text-lg mt-0.5 flex-shrink-0">✓</span>
+            <div>
+              <p class="text-sm font-medium text-white">Missing Auth</p>
+              <p class="text-xs text-zinc-500 font-mono mt-0.5">OWASP A01</p>
+            </div>
+          </div>
+          <div
+            class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-start gap-3"
+          >
+            <span class="text-brand-500 text-lg mt-0.5 flex-shrink-0">✓</span>
+            <div>
+              <p class="text-sm font-medium text-white">
+                Code Injection / eval()
+              </p>
+              <p class="text-xs text-zinc-500 font-mono mt-0.5">OWASP A03</p>
+            </div>
+          </div>
+          <div
+            class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-start gap-3"
+          >
+            <span class="text-brand-500 text-lg mt-0.5 flex-shrink-0">✓</span>
+            <div>
+              <p class="text-sm font-medium text-white">Debug Mode Exposure</p>
+              <p class="text-xs text-zinc-500 font-mono mt-0.5">OWASP A05</p>
+            </div>
+          </div>
+          <div
+            class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-start gap-3"
+          >
+            <span class="text-brand-500 text-lg mt-0.5 flex-shrink-0">✓</span>
+            <div>
+              <p class="text-sm font-medium text-white">
+                Insecure Deserialization
+              </p>
+              <p class="text-xs text-zinc-500 font-mono mt-0.5">OWASP A08</p>
+            </div>
+          </div>
+          <div
+            class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-start gap-3"
+          >
+            <span class="text-brand-500 text-lg mt-0.5 flex-shrink-0">✓</span>
+            <div>
+              <p class="text-sm font-medium text-white">Weak Cryptography</p>
+              <p class="text-xs text-zinc-500 font-mono mt-0.5">OWASP A02</p>
+            </div>
+          </div>
+          <div
+            class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex items-start gap-3"
+          >
+            <span class="text-brand-500 text-lg mt-0.5 flex-shrink-0">✓</span>
+            <div>
+              <p class="text-sm font-medium text-white">
+                XSS / Prototype Pollution
+              </p>
+              <p class="text-xs text-zinc-500 font-mono mt-0.5">
+                OWASP A03 / A08
               </p>
             </div>
           </div>
-          `).join('')}
         </div>
       </div>
     </section>
