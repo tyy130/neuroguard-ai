@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuroguard-ai"
-version = "0.1.0"
+version = "0.1.1"
 description = "AI-native code security review powered by Gemma 4 Thinking Mode"
 readme = "README.md"
 license = { text = "Apache-2.0" }
