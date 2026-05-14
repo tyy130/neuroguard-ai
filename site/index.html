@@ -92,38 +92,110 @@
     <nav
       class="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800/60 bg-zinc-950/80 backdrop-blur-md"
     >
-      <div
-        class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between"
-      >
-        <div class="flex items-center gap-2">
-          <span class="text-brand-500 font-mono text-lg font-semibold"
-            >⬡ NeuroGuard</span
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="h-14 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-brand-500 font-mono text-lg font-semibold"
+              >⬡ NeuroGuard</span
+            >
+            <span
+              class="text-xs font-mono bg-brand-500/10 text-brand-500 border border-brand-500/20 px-2 py-0.5 rounded-full"
+              >v0.1.3</span
+            >
+          </div>
+
+          <!-- Desktop links -->
+          <div class="hidden md:flex items-center gap-4">
+            <a
+              href="https://github.com/tyy130/neuroguard-ai"
+              target="_blank"
+              class="text-zinc-400 hover:text-white text-sm transition-colors"
+              >GitHub</a
+            >
+            <a
+              href="https://pypi.org/project/neuroguard-ai/"
+              target="_blank"
+              class="text-zinc-400 hover:text-white text-sm transition-colors"
+              >PyPI</a
+            >
+            <a
+              href="https://dev.to/challenges/google-gemma-2026-05-06"
+              target="_blank"
+              class="text-xs font-mono bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-full hover:bg-orange-500/20 transition-colors"
+            >
+              Gemma 4 Challenge Entry
+            </a>
+          </div>
+
+          <!-- Mobile hamburger -->
+          <button
+            id="nav-toggle"
+            type="button"
+            onclick="toggleNav()"
+            aria-expanded="false"
+            aria-controls="mobile-nav"
+            aria-label="Toggle navigation menu"
+            class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/40"
           >
-          <span
-            class="text-xs font-mono bg-brand-500/10 text-brand-500 border border-brand-500/20 px-2 py-0.5 rounded-full"
-            >v0.1.3</span
-          >
+            <svg
+              id="nav-icon-open"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              viewBox="0 0 24 24"
+            >
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+            <svg
+              id="nav-icon-close"
+              class="hidden"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              viewBox="0 0 24 24"
+            >
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="6" y1="18" x2="18" y2="6" />
+            </svg>
+          </button>
         </div>
-        <div class="flex items-center gap-4">
-          <a
-            href="https://github.com/tyy130/neuroguard-ai"
-            target="_blank"
-            class="text-zinc-400 hover:text-white text-sm transition-colors"
-            >GitHub</a
-          >
-          <a
-            href="https://pypi.org/project/neuroguard-ai/"
-            target="_blank"
-            class="text-zinc-400 hover:text-white text-sm transition-colors"
-            >PyPI</a
-          >
-          <a
-            href="https://dev.to/challenges/google-gemma-2026-05-06"
-            target="_blank"
-            class="text-xs font-mono bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-full hover:bg-orange-500/20 transition-colors"
-          >
-            Gemma 4 Challenge Entry
-          </a>
+
+        <!-- Mobile panel -->
+        <div id="mobile-nav" class="hidden md:hidden pb-3">
+          <div class="flex flex-col border-t border-zinc-800/60 pt-2">
+            <a
+              href="https://github.com/tyy130/neuroguard-ai"
+              target="_blank"
+              onclick="closeNav()"
+              class="text-zinc-300 hover:text-white hover:bg-zinc-800/40 text-sm py-2.5 px-2 rounded-md transition-colors"
+              >GitHub</a
+            >
+            <a
+              href="https://pypi.org/project/neuroguard-ai/"
+              target="_blank"
+              onclick="closeNav()"
+              class="text-zinc-300 hover:text-white hover:bg-zinc-800/40 text-sm py-2.5 px-2 rounded-md transition-colors"
+              >PyPI</a
+            >
+            <a
+              href="https://dev.to/challenges/google-gemma-2026-05-06"
+              target="_blank"
+              onclick="closeNav()"
+              class="mt-2 inline-flex items-center justify-center text-xs font-mono bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-2 rounded-full hover:bg-orange-500/20 transition-colors"
+            >
+              Gemma 4 Challenge Entry
+            </a>
+          </div>
         </div>
       </div>
     </nav>
@@ -530,6 +602,44 @@
     </footer>
 
     <script>
+      function toggleNav() {
+        const panel = document.getElementById("mobile-nav");
+        const btn = document.getElementById("nav-toggle");
+        const open = document.getElementById("nav-icon-open");
+        const close = document.getElementById("nav-icon-close");
+        const isOpen = !panel.classList.contains("hidden");
+        if (isOpen) {
+          panel.classList.add("hidden");
+          open.classList.remove("hidden");
+          close.classList.add("hidden");
+          btn.setAttribute("aria-expanded", "false");
+        } else {
+          panel.classList.remove("hidden");
+          open.classList.add("hidden");
+          close.classList.remove("hidden");
+          btn.setAttribute("aria-expanded", "true");
+        }
+      }
+      function closeNav() {
+        const panel = document.getElementById("mobile-nav");
+        if (!panel.classList.contains("hidden")) {
+          toggleNav();
+        }
+      }
+      // Auto-close panel when resizing past the md breakpoint
+      window.addEventListener("resize", () => {
+        if (window.innerWidth >= 768) {
+          const panel = document.getElementById("mobile-nav");
+          const btn = document.getElementById("nav-toggle");
+          const open = document.getElementById("nav-icon-open");
+          const close = document.getElementById("nav-icon-close");
+          panel.classList.add("hidden");
+          open.classList.remove("hidden");
+          close.classList.add("hidden");
+          btn.setAttribute("aria-expanded", "false");
+        }
+      });
+
       function copyInstall() {
         navigator.clipboard.writeText("pip install neuroguard-ai").then(() => {
           document.getElementById("copy-icon").classList.add("hidden");
